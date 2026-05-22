@@ -20,10 +20,11 @@ create table public.wealth_month_data (
   user_id uuid not null references public.profiles(id) on delete cascade,
   year int not null,
   month int not null check (month between 0 and 11),
+  revision int not null default 0,
   data jsonb not null default '{}'::jsonb,
   storage_path text,
   updated_at timestamptz not null default now(),
-  unique(user_id, year, month)
+  unique(user_id, year, month, revision)
 );
 
 create or replace function public.is_superadmin()
@@ -87,3 +88,16 @@ for update to authenticated using (bucket_id = 'wealth-quadrant' and ((storage.f
 
 create policy "storage delete own folder or superadmin" on storage.objects
 for delete to authenticated using (bucket_id = 'wealth-quadrant' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_superadmin()));
+
+-- ─────────────────────────────────────────────────────────────────
+-- MIGRATION: run this block if upgrading an existing database
+-- (safe to skip on a fresh install — the CREATE TABLE above already
+--  includes the revision column and updated unique constraint)
+-- ─────────────────────────────────────────────────────────────────
+-- alter table public.wealth_month_data
+--   add column if not exists revision int not null default 0;
+-- alter table public.wealth_month_data
+--   drop constraint if exists wealth_month_data_user_id_year_month_key;
+-- alter table public.wealth_month_data
+--   add constraint wealth_month_data_user_id_year_month_revision_key
+--   unique (user_id, year, month, revision);
