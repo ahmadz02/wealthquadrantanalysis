@@ -26,7 +26,7 @@ window.WQAuth = (() => {
         const username = document.getElementById('authUsername').value.trim();
         const requested_role = document.getElementById('authRole').value;
         if (!username) return setMsg('Username is required.', 'error');
-        const { error } = await WQSupabase.auth.signUp({ email, password, options: { data: { username, requested_role } } });
+        const { error } = await WQSupabase.auth.signUp({ email, password, options: {data: { username, requested_role },emailRedirectTo: 'https://wealthquadrantanalysis.vercel.app/'}});
         if (error) throw error;
         setMsg('Account created. Please wait for Superadmin approval before login access is enabled.', 'success');
       } else {

@@ -2,5 +2,5 @@
 window.WQ_CONFIG = {
   SUPABASE_URL: "https://ppcxuptjzhrqkcdokryk.supabase.co",
   SUPABASE_ANON_KEY: 'sb_publishable_kDTuxJSCyWeIxEa-1c3Aug_-Cs5S7Fq',
-  STORAGE_BUCKET: 'wealth-quadrant'
+  STORAGE_BUCKET: 'wealth-quadrant-analysis'
 };
