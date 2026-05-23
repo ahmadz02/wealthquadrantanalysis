@@ -45,6 +45,8 @@ window.WQStorage = (() => {
 
   function exportCache(){ return Object.fromEntries(Object.entries(cache).map(([k,v]) => [k, v])); }
 
+  function getActiveUserId(){ return activeUserId; }
+
   async function importCache(data){
     let count = 0;
     for (const [k,v] of Object.entries(data)) {
@@ -56,5 +58,5 @@ window.WQStorage = (() => {
     return count;
   }
 
-  return { setActiveUser, storageKey, getMonthData, saveMonthData, removeMonthData, exportCache, importCache };
+  return { setActiveUser, getActiveUserId, storageKey, getMonthData, saveMonthData, removeMonthData, exportCache, importCache };
 })();

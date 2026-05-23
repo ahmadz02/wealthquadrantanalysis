@@ -146,5 +146,7 @@ async function rejectUser(userId){
 
   WQSupabase.auth.getUser().then(({data}) => { if (data?.user) hydrate(data.user).catch(e => setMsg(e.message,'error')); });
   function getRole() { return profile ? profile.role : null; }
-  return { showAuthMode, submitAuth, loadPendingApprovals, approveUser, rejectUser, switchViewedUser, signOut, getRole };
+  function getUserId() { return profile ? profile.id : null; }
+  function getProfile() { return profile; }
+  return { showAuthMode, submitAuth, loadPendingApprovals, approveUser, rejectUser, switchViewedUser, signOut, getRole, getUserId, getProfile };
 })();
