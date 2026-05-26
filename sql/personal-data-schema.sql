@@ -60,6 +60,18 @@ create policy "Superadmin can read all personal profiles"
     )
   );
 
+
+create policy "Superadmin can insert all personal profiles"
+  on public.personal_profiles for insert
+  with check (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid()
+        and p.role = 'superadmin'
+        and p.status = 'approved'
+    )
+  );
+
 create policy "Superadmin can update all personal profiles"
   on public.personal_profiles for update
   using (

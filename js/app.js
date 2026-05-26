@@ -82,7 +82,10 @@ function defaultOnlineData() { return {
   mtg:[], non:[], fix:[], vari:[], sav:[], tak:[], cash:[], inv:[], prop:[], ret:[], liab:[]
 }; }
 
-function noteKey(key) { return `wq-note-${currentYear}-${currentMonth}-${key}`; }
+function noteKey(key) {
+  const uid = window.WQStorage?.getActiveUserId?.() || window.WQAuth?.getUserId?.() || 'anonymous';
+  return window.WQStorage?.getScopedLocalKey?.(`note-${currentYear}-${currentMonth}-${key}`, uid) || `wq:${uid}:note-${currentYear}-${currentMonth}-${key}`;
+}
 
 function clearDynamicRows() {
   ['allow','passive','side','ded','mtg','non','fix','vari','sav','tak','cash','inv','prop','ret','liab'].forEach(k => { const el = document.getElementById('rows-'+k); if (el) el.innerHTML = ''; });

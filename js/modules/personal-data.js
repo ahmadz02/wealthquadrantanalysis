@@ -18,7 +18,11 @@ window.WQPersonalData = (() => {
   }
 
   function getCurrentUserId() {
-    return activeUserId || window.WQStorage?.activeUserId || window.WQAuth?.getUserId?.() || null;
+    return activeUserId || window.WQStorage?.getActiveUserId?.() || window.WQAuth?.getUserId?.() || null;
+  }
+
+  function localKey(userId = getCurrentUserId()) {
+    return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
   }
 
   function defaultProfile() {
@@ -260,7 +264,7 @@ window.WQPersonalData = (() => {
   async function saveProfile(data = collectData()) {
     currentProfile = data;
     const userId = getCurrentUserId();
-    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem(localKey(userId), JSON.stringify(data)); } catch (e) {}
 
     if (!window.WQSupabase || !userId) return data;
 
@@ -309,7 +313,7 @@ window.WQPersonalData = (() => {
     }
 
     if (!data) {
-      try { data = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+      try { data = JSON.parse(localStorage.getItem(localKey(activeUserId)) || 'null'); } catch (e) {}
     }
 
     loadDataIntoForm(data || defaultProfile());

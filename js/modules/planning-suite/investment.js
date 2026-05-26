@@ -10,7 +10,7 @@ window.WQPlanningSuiteModules.push({
     const frame = document.createElement('iframe');
     frame.className = 'planning-suite-frame';
     frame.title = "Investment Planning";
-    frame.srcdoc = html;
+    frame.srcdoc = window.WQStorage?.injectScopedStorageIntoHtml?.(html, this.id) || html;
     const resizeFrame = () => {
       try {
         const doc = frame.contentDocument || frame.contentWindow?.document;

@@ -64,9 +64,9 @@ window.WQAuth = (() => {
     const { data, error } = await WQSupabase.from('profiles').select('id, username, email, role').eq('status','approved').order('username');
     if (error) throw error;
     const selector = document.getElementById('adminUserSelector');
-    selector.innerHTML = (data || []).map(u => `<option value="${u.id}">${u.username || u.email} (${u.role})</option>`).join('');
-    const first = selector.value || profile.id;
-    await switchViewedUser(first);
+    selector.innerHTML = (data || []).map(u => `<option value="${u.id}">${u.username || u.email} (${u.role})${u.id === profile.id ? ' - own account' : ''}</option>`).join('');
+    selector.value = profile.id;
+    await switchViewedUser(profile.id);
   }
 
   async function switchViewedUser(userId){

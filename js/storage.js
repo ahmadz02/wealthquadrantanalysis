@@ -47,6 +47,30 @@ window.WQStorage = (() => {
 
   function getActiveUserId(){ return activeUserId; }
 
+  function getScopedLocalKey(key, userId){
+    const uid = userId || activeUserId || window.WQAuth?.getUserId?.() || 'anonymous';
+    return `wq:${uid}:${key}`;
+  }
+
+  function injectScopedStorageIntoHtml(html, moduleId){
+    const uid = activeUserId || window.WQAuth?.getUserId?.() || 'anonymous';
+    const scope = `wq:${uid}:planning-suite:${moduleId || 'module'}:`;
+    const shim = `<script>
+(function(){
+  var __wqScope = ${JSON.stringify(scope)};
+  function scopedKey(key){ key = String(key || ''); return key.indexOf(__wqScope) === 0 ? key : __wqScope + key; }
+  var setItem = Storage.prototype.setItem;
+  var getItem = Storage.prototype.getItem;
+  var removeItem = Storage.prototype.removeItem;
+  Storage.prototype.setItem = function(key, value){ return setItem.call(this, scopedKey(key), value); };
+  Storage.prototype.getItem = function(key){ return getItem.call(this, scopedKey(key)); };
+  Storage.prototype.removeItem = function(key){ return removeItem.call(this, scopedKey(key)); };
+})();
+<\/script>`;
+    if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + shim);
+    return shim + html;
+  }
+
   async function importCache(data){
     let count = 0;
     for (const [k,v] of Object.entries(data)) {
@@ -58,5 +82,5 @@ window.WQStorage = (() => {
     return count;
   }
 
-  return { setActiveUser, getActiveUserId, storageKey, getMonthData, saveMonthData, removeMonthData, exportCache, importCache };
+  return { setActiveUser, getActiveUserId, getScopedLocalKey, injectScopedStorageIntoHtml, storageKey, getMonthData, saveMonthData, removeMonthData, exportCache, importCache };
 })();

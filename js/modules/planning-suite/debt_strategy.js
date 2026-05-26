@@ -12,7 +12,7 @@ window.WQPlanningSuiteModules.push({
     frame.title = "Debt Strategy Planning";
     frame.setAttribute('scrolling', 'no');
     frame.style.overflow = 'hidden';
-    frame.srcdoc = html;
+    frame.srcdoc = window.WQStorage?.injectScopedStorageIntoHtml?.(html, this.id) || html;
     const resizeFrame = () => {
       try {
         const doc = frame.contentDocument || frame.contentWindow?.document;

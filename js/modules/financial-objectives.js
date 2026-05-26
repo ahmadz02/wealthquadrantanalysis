@@ -22,7 +22,11 @@ window.WQObjectives = (() => {
       .replaceAll("'", '&#039;');
   }
   function getCurrentUserId() {
-    return activeUserId || window.WQStorage?.activeUserId || window.WQAuth?.getUserId?.() || null;
+    return activeUserId || window.WQStorage?.getActiveUserId?.() || window.WQAuth?.getUserId?.() || null;
+  }
+
+  function localKey(userId = getCurrentUserId()) {
+    return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
   }
 
   function renderSection() {
@@ -149,8 +153,8 @@ window.WQObjectives = (() => {
   }
 
   async function saveObjectives(data = collectData()) {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch (e) {}
     const userId = getCurrentUserId();
+    try { localStorage.setItem(localKey(userId), JSON.stringify(data)); } catch (e) {}
     if (!window.WQSupabase || !userId) return data;
 
     const rows = Object.values(data).flat().map(r => ({
@@ -202,7 +206,7 @@ window.WQObjectives = (() => {
     }
 
     if (!data) {
-      try { data = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+      try { data = JSON.parse(localStorage.getItem(localKey(activeUserId)) || 'null'); } catch (e) {}
     }
     loadDataIntoForm(data || { short: [], medium: [], long: [] });
     return collectData();
