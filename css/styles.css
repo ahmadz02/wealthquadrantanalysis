@@ -335,3 +335,122 @@ body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text)
 .small-btn.approve { border-color:var(--green); color:var(--green); }
 .small-btn.reject { border-color:var(--red); color:var(--red); }
 #appShell { display:none; }
+
+
+
+/* Planning Suite */
+.planning-suite-page {
+  background: var(--bg, #f7f6f2);
+  min-height: calc(100vh - 72px);
+  padding: 0;
+}
+.planning-suite-shell {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+.planning-suite-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.planning-suite-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--text3, #a09d98);
+  margin-bottom: 4px;
+}
+.planning-suite-title {
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -.03em;
+  color: var(--text, #1a1916);
+}
+.planning-suite-sub {
+  font-size: 12px;
+  color: var(--text3, #a09d98);
+  margin-top: 3px;
+}
+.planning-suite-tabs-wrap {
+  border-top: 1px solid var(--border, #e2dfd8);
+  border-bottom: 1px solid var(--border, #e2dfd8);
+  background: var(--surface, #fff);
+  margin: 0 -1.5rem 1rem;
+  padding: .65rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.planning-suite-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+.planning-suite-tab {
+  flex: 0 0 auto;
+  border: 1px solid var(--border, #e2dfd8);
+  background: var(--surface2, #f2f0eb);
+  color: var(--text2, #6b6860);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.planning-suite-tab:hover {
+  border-color: var(--border-strong, #c8c4bb);
+  color: var(--text, #1a1916);
+}
+.planning-suite-tab.active {
+  background: var(--text, #1a1916);
+  border-color: var(--text, #1a1916);
+  color: #fff;
+}
+.planning-suite-module {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e2dfd8);
+  border-radius: var(--rl, 10px);
+  min-height: 720px;
+  overflow: hidden;
+  box-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,0.06));
+}
+.planning-suite-frame {
+  display: block;
+  width: 100%;
+  min-height: 82vh;
+  height: 1200px;
+  border: 0;
+  background: var(--bg, #f7f6f2);
+}
+@media (max-width: 900px) {
+  .planning-suite-shell { padding: 1rem; }
+  .planning-suite-head { display: block; }
+  .planning-suite-tabs-wrap { margin-left: -1rem; margin-right: -1rem; padding-left: 1rem; padding-right: 1rem; }
+  .planning-suite-module { border-radius: 8px; }
+}
+@media print {
+  .planning-suite-tabs-wrap, .nav-tabs-top, .header-actions, .year-control { display: none !important; }
+  .planning-suite-module { border: 0; box-shadow: none; }
+}
+
+/* Planning Suite access control */
+.planning-suite-access-denied {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--rl);
+  padding: 2rem;
+  color: var(--text2);
+}
+.planning-suite-access-denied p {
+  margin-top: .5rem;
+  font-size: 13px;
+}

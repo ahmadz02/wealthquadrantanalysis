@@ -95,8 +95,10 @@
     <button class="hdr-btn import-btn" onclick="document.getElementById('importFileInput').click()">⬆ Import</button>
   </div>
   <div class="nav-tabs-top">
-    <div class="nav-tab-top active" id="navTracker" onclick="showPage('tracker',this)">📅 Tracker</div>
-    <div class="nav-tab-top" id="navAnalytics" onclick="showPage('analytics',this)">📊 Analytics</div>
+    <div class="nav-tab-top active" id="navPersonal" onclick="showPage('personal',this)">Personal Data</div>
+    <div class="nav-tab-top" id="navEntry" onclick="showPage('entry',this)">Data Entry</div>
+    <div class="nav-tab-top" id="navAnalytics" onclick="showPage('analysis',this)">Analysis</div>
+    <div class="nav-tab-top planning-suite-admin-only" id="navPlanningSuite" onclick="showPage('planning-suite',this)">Planning Suite</div>
   </div>
 </div>
 
@@ -181,6 +183,23 @@
 </div>
 
 
+<!-- PLANNING SUITE PAGE -->
+<div class="page planning-suite-page" id="page-planning-suite">
+  <div class="planning-suite-shell">
+    <div class="planning-suite-head">
+      <div>
+        <div class="planning-suite-eyebrow">Planning Suite</div>
+        <div class="planning-suite-title" id="planningSuiteTitle">Risk &amp; Takaful Planning</div>
+        <div class="planning-suite-sub" id="planningSuiteSub">Selected module</div>
+      </div>
+    </div>
+    <div class="planning-suite-tabs-wrap">
+      <div class="planning-suite-tabs" id="planningSuiteTabs" aria-label="Planning Suite modules"></div>
+    </div>
+    <div class="planning-suite-module" id="planningSuiteModule"></div>
+  </div>
+</div>
+
 </div>
 
 <script src="js/config.js"></script>
@@ -191,6 +210,15 @@
 <script src="js/modules/financial-objectives.js"></script>
 <script src="js/modules/analysis-profile.js"></script>
 <script src="js/modules/pdf-profile.js"></script>
+<script src="js/modules/planning-suite/risk_takaful.js"></script>
+<script src="js/modules/planning-suite/investment.js"></script>
+<script src="js/modules/planning-suite/hajj.js"></script>
+<script src="js/modules/planning-suite/retirement.js"></script>
+<script src="js/modules/planning-suite/zakat_tax.js"></script>
+<script src="js/modules/planning-suite/education.js"></script>
+<script src="js/modules/planning-suite/debt_strategy.js"></script>
+<script src="js/modules/planning-suite/estate.js"></script>
+<script src="js/pages/planning-suite.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
