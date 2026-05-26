@@ -4,41 +4,90 @@ window.WQStorage = (() => {
 
   function storageKey(y,m){ return `pft_${y}_${m}`; }
   function scopedKey(y,m){ return `${activeUserId}/${storageKey(y,m)}.json`; }
+  function localMonthKey(y,m){ return `wq:${activeUserId || 'anonymous'}:month:${y}:${m}`; }
+
+  function clone(v){ return JSON.parse(JSON.stringify(v || {})); }
+
+  function readLocalMonth(y,m){
+    try {
+      if (!activeUserId) return null;
+      const raw = localStorage.getItem(localMonthKey(y,m));
+      return raw ? JSON.parse(raw) : null;
+    } catch(e){
+      console.warn('Local month read failed', e);
+      return null;
+    }
+  }
+
+  function writeLocalMonth(y,m,d){
+    try {
+      if (!activeUserId) return;
+      localStorage.setItem(localMonthKey(y,m), JSON.stringify(d || {}));
+    } catch(e){
+      console.warn('Local month save failed', e);
+    }
+  }
 
   async function setActiveUser(userId){
     activeUserId = userId;
     cache = {};
     if (!userId) return;
-    const { data, error } = await WQSupabase
-      .from('wealth_month_data')
-      .select('year, month, data')
-      .eq('user_id', userId);
-    if (error) throw error;
-    (data || []).forEach(row => cache[storageKey(row.year,row.month)] = row.data);
+    try {
+      const { data, error } = await WQSupabase
+        .from('wealth_month_data')
+        .select('year, month, data')
+        .eq('user_id', userId);
+      if (error) throw error;
+      (data || []).forEach(row => {
+        cache[storageKey(row.year,row.month)] = row.data || {};
+        writeLocalMonth(row.year,row.month,row.data || {});
+      });
+    } catch(error) {
+      console.warn('Supabase month data load failed; using local fallback only.', error);
+    }
   }
 
   function getMonthData(y,m, defaultFactory){
     const key = storageKey(y,m);
-    return cache[key] ? JSON.parse(JSON.stringify(cache[key])) : defaultFactory();
+    if (cache[key]) return clone(cache[key]);
+    const local = readLocalMonth(y,m);
+    if (local) {
+      cache[key] = clone(local);
+      return clone(local);
+    }
+    return defaultFactory ? defaultFactory() : {};
   }
 
   async function saveMonthData(y,m,d){
     if (!activeUserId) return;
     const key = storageKey(y,m);
-    cache[key] = JSON.parse(JSON.stringify(d));
-    const payload = { user_id: activeUserId, year: y, month: m, data: d, storage_path: scopedKey(y,m), updated_at: new Date().toISOString() };
-    const { error } = await WQSupabase.from('wealth_month_data').upsert(payload, { onConflict: 'user_id,year,month' });
-    if (error) console.error('Supabase save failed:', error);
+    const data = clone(d);
 
-    // Optional file copy in Supabase Storage. Database remains the source of truth.
-    await WQSupabase.storage
-      .from(window.WQ_CONFIG.STORAGE_BUCKET)
-      .upload(scopedKey(y,m), new Blob([JSON.stringify(d,null,2)], { type:'application/json' }), { upsert:true });
+    // Synchronous local fallback first, so data survives logout/navigation even if network save is slow.
+    cache[key] = data;
+    writeLocalMonth(y,m,data);
+
+    const payload = { user_id: activeUserId, year: y, month: m, data, storage_path: scopedKey(y,m), updated_at: new Date().toISOString() };
+    try {
+      const { error } = await WQSupabase.from('wealth_month_data').upsert(payload, { onConflict: 'user_id,year,month' });
+      if (error) throw error;
+    } catch(error) {
+      console.error('Supabase save failed; data kept in user-scoped local fallback.', error);
+    }
+
+    try {
+      await WQSupabase.storage
+        .from(window.WQ_CONFIG.STORAGE_BUCKET)
+        .upload(scopedKey(y,m), new Blob([JSON.stringify(data,null,2)], { type:'application/json' }), { upsert:true });
+    } catch(error) {
+      console.warn('Supabase storage copy failed; database/local fallback remains source of truth.', error);
+    }
   }
 
   async function removeMonthData(y,m){
     if (!activeUserId) return;
     delete cache[storageKey(y,m)];
+    try { localStorage.removeItem(localMonthKey(y,m)); } catch(e){}
     await WQSupabase.from('wealth_month_data').delete().eq('user_id', activeUserId).eq('year', y).eq('month', m);
     await WQSupabase.storage.from(window.WQ_CONFIG.STORAGE_BUCKET).remove([scopedKey(y,m)]);
   }

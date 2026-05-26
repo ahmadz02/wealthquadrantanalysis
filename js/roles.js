@@ -70,6 +70,7 @@ window.WQAuth = (() => {
   }
 
   async function switchViewedUser(userId){
+    await window.WQApp?.flushDataEntrySave?.();
     await WQStorage.setActiveUser(userId);
     window.WQApp.initApp();
   }
@@ -140,6 +141,7 @@ async function rejectUser(userId){
   }
 
   async function signOut(){
+    await window.WQApp?.flushDataEntrySave?.();
     await WQSupabase.auth.signOut();
     location.reload();
   }

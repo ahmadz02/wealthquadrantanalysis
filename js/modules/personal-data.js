@@ -57,9 +57,12 @@ window.WQPersonalData = (() => {
               <div class="seg-title">Personal Information</div>
               <div class="seg-desc">Basic client profile, family information and supporting details</div>
             </div>
-            <div class="seg-tot-box">
-              <div class="tot-label">Profile Status</div>
-              <div class="tot-val neutral" id="pd-status">Incomplete</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+              <div class="seg-tot-box">
+                <div class="tot-label">Profile Status</div>
+                <div class="tot-val neutral" id="pd-status">Incomplete</div>
+              </div>
+              <button class="btn-nav btn-pri" type="button" onclick="WQPersonalData.saveProfile().then(()=>{this.textContent='Saved';setTimeout(()=>this.textContent='Save data',1200)})">Save data</button>
             </div>
           </div>
 
@@ -76,7 +79,7 @@ window.WQPersonalData = (() => {
             <div class="cb open">
               <div class="f-static"><div><div class="f-label">Name</div><div class="f-sub">Full name as per IC</div></div><input class="inp-t" id="pd-name" type="text" placeholder="Full name" oninput="WQPersonalData.handleInput()"></div>
               <div class="f-static"><div><div class="f-label">IC Number</div><div class="f-sub">Identification number</div></div><input class="inp-t" id="pd-ic" type="text" placeholder="IC number" oninput="WQPersonalData.handleInput()"></div>
-              <div class="f-static"><div><div class="f-label">Current Age</div><div class="f-sub">Age in years</div></div><input class="inp age-input" id="pd-spouse-age" type="number" min="0" placeholder="0" oninput="WQPersonalData.handleInput()"></div>
+              <div class="f-static"><div><div class="f-label">Current Age</div><div class="f-sub">Age in years</div></div><input class="inp age-input" id="pd-age" type="number" min="0" placeholder="0" oninput="WQPersonalData.handleInput()"></div>
               <div class="f-static"><div><div class="f-label">Phone Number</div><div class="f-sub">Main contact number</div></div><input class="inp-t" id="pd-phone" type="text" placeholder="Phone number" oninput="WQPersonalData.handleInput()"></div>
               <div class="f-static"><div><div class="f-label">Email</div><div class="f-sub">Used in PDF basic info</div></div><input class="inp-t" id="pd-email" type="email" placeholder="Email address" oninput="WQPersonalData.handleInput()"></div>
               <div class="f-static"><div><div class="f-label">Profession</div><div class="f-sub">Occupation or business</div></div><input class="inp-t" id="pd-profession" type="text" placeholder="Profession" oninput="WQPersonalData.handleInput()"></div>

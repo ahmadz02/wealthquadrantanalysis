@@ -102,6 +102,7 @@ async function loadCurrentPeriod() {
   const d = await WQStorage.getMonthData(currentYear, currentMonth, defaultOnlineData);
   loadDataIntoForm(d || defaultOnlineData());
   recalc();
+  setTimeout(installExplicitSaveButtons, 0);
   if (!document.querySelector('.page.active')) showPage('personal');
 }
 
@@ -123,8 +124,8 @@ function setPeriod() {
 const R = id => document.getElementById(id);
 const setText = (id, v) => { const e = R(id); if(e) e.textContent = v; };
 const fmtRM = v => 'RM ' + Math.abs(v).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
-const getVal = id => parseFloat(R(id)?.value)||0;
-const sumRows = id => { let s=0; R(id)?.querySelectorAll('.row-amt').forEach(i=>s+=parseFloat(i.value)||0); return s; };
+const getVal = id => parseFloat(String(R(id)?.value || '').replace(/,/g,'')) || 0;
+const sumRows = id => { let s=0; R(id)?.querySelectorAll('.row-amt').forEach(i=>s+=parseFloat(String(i.value || '').replace(/,/g,''))||0); return s; };
 const sumArr = a => (a||[]).reduce((s,r)=>s+(r.amount||0),0);
 
 /* ── PAGE SWITCHING ── */
@@ -164,6 +165,7 @@ function showPage(p) {
     window.WQPDFProfile?.patchExistingPrintButton?.();
     setTimeout(loadCommentaries, 50);
   }
+  setTimeout(installExplicitSaveButtons, 0);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -346,9 +348,15 @@ function recalc() {
 function getRowData(id) {
   const el=R(id); if(!el) return [];
   return Array.from(el.querySelectorAll('.exp-row, .exp-row-4')).map(row=>{
-    const texts=row.querySelectorAll('input[type=text],select');
-    const amt=row.querySelector('.row-amt');
-    return {desc:texts[texts.length-1]?.value||texts[0]?.value||'', amount:parseFloat(amt?.value)||0};
+    const select = row.querySelector('select');
+    const textInputs = row.querySelectorAll('input[type=text]');
+    const amt = row.querySelector('.row-amt');
+    const data = {
+      desc: textInputs[textInputs.length-1]?.value || '',
+      amount: parseFloat(String(amt?.value || '').replace(/,/g,'')) || 0
+    };
+    if (select) data.category = select.value || '';
+    return data;
   });
 }
 function collectData() {
@@ -361,18 +369,32 @@ function collectData() {
     liab:getRowData('rows-liab'),
   };
 }
+let __wqSaveTimer = null;
 async function saveData() {
   if (!window.WQStorage) return;
+  const snapshot = collectData();
+  clearTimeout(__wqSaveTimer);
+  __wqSaveTimer = setTimeout(async () => {
+    try { await WQStorage.saveMonthData(currentYear, currentMonth, snapshot); }
+    catch(e){ console.error('Save failed', e); }
+  }, 250);
+}
+async function flushDataEntrySave() {
+  if (!window.WQStorage) return;
+  clearTimeout(__wqSaveTimer);
   try { await WQStorage.saveMonthData(currentYear, currentMonth, collectData()); }
-  catch(e){ console.error('Save failed', e); }
+  catch(e){ console.error('Flush save failed', e); }
 }
 function loadRows(id, rows, isLiab) {
   if(!rows||!rows.length) return;
   rows.forEach(r=>{
     if(isLiab) addLiabRow(); else addRow(id.replace('rows-',''));
-    const c=R(id), last=c.lastElementChild;
-    const ti=last.querySelector('input[type=text]'), ai=last.querySelector('.row-amt');
-    if(ti) ti.value=r.desc||''; if(ai) ai.value=r.amount||'';
+    const c=R(id), last=c?.lastElementChild;
+    if(!last) return;
+    const sel=last.querySelector('select'), ti=last.querySelector('input[type=text]'), ai=last.querySelector('.row-amt');
+    if(sel && r.category) sel.value=r.category;
+    if(ti) ti.value=r.desc||'';
+    if(ai) ai.value=(r.amount ?? '') === '' ? '' : r.amount;
   });
 }
 
@@ -689,7 +711,9 @@ function loadDataIntoForm(d) {
     if(d.socso) R('ded-socso').value=d.socso;
     if(d.zakat) R('ded-zakat').value=d.zakat;
     loadRows('rows-ded',d.othDed);
-    ['mtg','non','fix','vari','sav','tak','cash','inv','prop','ret'].forEach(k=>loadRows('rows-'+k,d[k]));
+    ['mtg','non','fix'].forEach(k=>loadRows('rows-'+k,d[k]));
+    loadRows('rows-var', d.vari || d.var || []);
+    ['sav','tak','cash','inv','prop','ret'].forEach(k=>loadRows('rows-'+k,d[k]));
     loadRows('rows-liab',d.liab,true);
     recalc();
   
@@ -697,7 +721,83 @@ function loadDataIntoForm(d) {
 }
 
 
+function installDataEntryAutosaveListeners() {
+  if (window.__wqDataEntryAutosaveInstalled) return;
+  window.__wqDataEntryAutosaveInstalled = true;
+  document.addEventListener('input', function(e){
+    if (!e.target.closest || !e.target.closest('#page-entry')) return;
+    if (e.target.matches('input, select, textarea')) saveData();
+  });
+  document.addEventListener('change', function(e){
+    if (!e.target.closest || !e.target.closest('#page-entry')) return;
+    if (e.target.matches('input, select, textarea')) { recalc(); saveData(); }
+  });
+  window.addEventListener('beforeunload', function(){
+    try {
+      if (window.WQStorage?.saveMonthData) WQStorage.saveMonthData(currentYear, currentMonth, collectData());
+    } catch(e) {}
+  });
+}
+
+
+
+function showSaveStatus(btn, message) {
+  if (!btn) return;
+  const old = btn.textContent;
+  btn.textContent = message || 'Saved';
+  btn.disabled = true;
+  setTimeout(() => { btn.textContent = old; btn.disabled = false; }, 1400);
+}
+
+async function savePersonalDataNow(btn) {
+  try {
+    await window.WQPersonalData?.saveProfile?.();
+    showSaveStatus(btn, 'Saved');
+  } catch(e) {
+    console.error('Personal Data save failed', e);
+    showSaveStatus(btn, 'Save failed');
+  }
+}
+
+async function saveEntryDataNow(btn) {
+  try {
+    await flushDataEntrySave();
+    showSaveStatus(btn, 'Saved');
+  } catch(e) {
+    console.error('Data Entry save failed', e);
+    showSaveStatus(btn, 'Save failed');
+  }
+}
+
+function makeSaveButton(id, label, handler) {
+  const btn = document.createElement('button');
+  btn.id = id;
+  btn.type = 'button';
+  btn.className = 'btn-nav btn-pri wq-save-data-btn';
+  btn.style.marginLeft = '8px';
+  btn.textContent = label || 'Save data';
+  btn.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); handler(btn); });
+  return btn;
+}
+
+function installExplicitSaveButtons() {
+  const personalHeader = R('page-personal')?.querySelector('.seg-hdr');
+  
+  [
+    ['seg-1','save-inflow-data-btn'],
+    ['seg-2','save-outflow-data-btn'],
+    ['seg-3','save-assets-data-btn'],
+    ['seg-4','save-liabilities-data-btn']
+  ].forEach(([segId, btnId]) => {
+    const hdr = R(segId)?.querySelector('.seg-hdr');
+    if (!hdr || R(btnId)) return;
+    const right = hdr.children[1] || hdr;
+    right.appendChild(makeSaveButton(btnId, 'Save data', saveEntryDataNow));
+  });
+}
+
 window.WQApp = {
-  initApp: function(){ loadCurrentPeriod(); setTimeout(configurePlanningSuiteAccess, 0); },
-  loadCurrentPeriod
+  initApp: function(){ installDataEntryAutosaveListeners(); loadCurrentPeriod(); setTimeout(configurePlanningSuiteAccess, 0); setTimeout(installExplicitSaveButtons, 100); },
+  loadCurrentPeriod,
+  flushDataEntrySave
 };
