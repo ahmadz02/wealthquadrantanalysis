@@ -21,16 +21,27 @@ window.WQObjectives = (() => {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
-  function localKey(userId = getCurrentUserId()) {
-  const period = window.getCurrentPeriod?.() || {};
-  return window.WQStorage?.getScopedLocalKey?.(
-    `${LS_KEY}-${period.year}-${period.month}`,
-    userId
-  ) || `${LS_KEY}:${userId || 'anonymous'}:${period.year}-${period.month}`;
-}
+  function getCurrentUserId() {
+    return window.WQStorage?.getActiveUserId?.()
+      || window.WQAuth?.getUserId?.()
+      || activeUserId
+      || null;
+  }
 
-  function localKey(userId = getCurrentUserId()) {
-    return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
+  function getCurrentObjectivePeriod() {
+    const period = window.getCurrentPeriod?.() || {};
+    const now = new Date();
+    return {
+      year: Number.isFinite(Number(period.year)) ? Number(period.year) : now.getFullYear(),
+      month: Number.isFinite(Number(period.month)) ? Number(period.month) : now.getMonth()
+    };
+  }
+
+  function localKey(userId = getCurrentUserId(), period = getCurrentObjectivePeriod()) {
+    return window.WQStorage?.getScopedLocalKey?.(
+      `${LS_KEY}-${period.year}-${period.month}`,
+      userId
+    ) || `${LS_KEY}:${userId || 'anonymous'}:${period.year}-${period.month}`;
   }
 
   function renderSection() {
@@ -147,23 +158,26 @@ window.WQObjectives = (() => {
     };
   }
 
+  let isLoading = false;
+
   function loadDataIntoForm(data = {}) {
+    isLoading = true;
     GROUPS.forEach(g => {
       const wrap = R(`obj-rows-${g.key}`);
       if (wrap) wrap.innerHTML = '';
       (data[g.key] || []).slice(0, MAX_ROWS).forEach(row => addObjectiveRow(g.key, null, row));
       renumber(g.key);
     });
+    isLoading = false;
   }
 
-  async function saveObjectives(data = collectData()) {
+  async function saveObjectives(data = collectData(), period = getCurrentObjectivePeriod()) {
     const userId = getCurrentUserId();
-    try { localStorage.setItem(localKey(userId), JSON.stringify(data)); } catch (e) {}
-    if (!window.WQSupabase || !userId) return data;
-
-    const period = window.getCurrentPeriod?.() || {};
     const year = period.year;
     const month = period.month;
+
+    try { localStorage.setItem(localKey(userId, period), JSON.stringify(data)); } catch (e) {}
+    if (!window.WQSupabase || !userId) return data;
 
     const rows = Object.values(data).flat().map(r => ({
       user_id: userId,
@@ -187,7 +201,10 @@ window.WQObjectives = (() => {
     }
     if (rows.length) {
       const ins = await WQSupabase.from('financial_objectives').insert(rows);
-      if (ins.error) console.warn('Objective save fallback only:', ins.error.message);
+      if (ins.error) {
+        console.warn('Objective save fallback only:', ins.error.message);
+        console.warn('If this says duplicate key on financial_objectives_user_year_month_key, run sql/fix-financial-objectives-multiple-rows.sql in Supabase.');
+      }
     }
     return data;
   }
@@ -195,11 +212,11 @@ window.WQObjectives = (() => {
   async function loadObjectives(userId) {
     activeUserId = userId || getCurrentUserId();
     let data = null;
+    const period = getCurrentObjectivePeriod();
+    const year = period.year;
+    const month = period.month;
 
     if (window.WQSupabase && activeUserId) {
-      const period = window.getCurrentPeriod?.() || {};
-      const year = period.year;
-      const month = period.month;
 
       const { data: rows, error } = await WQSupabase
         .from('financial_objectives')
@@ -225,7 +242,7 @@ window.WQObjectives = (() => {
     }
 
     if (!data) {
-      try { data = JSON.parse(localStorage.getItem(localKey(activeUserId)) || 'null'); } catch (e) {}
+      try { data = JSON.parse(localStorage.getItem(localKey(activeUserId, period)) || 'null'); } catch (e) {}
     }
     loadDataIntoForm(data || { short: [], medium: [], long: [] });
     return collectData();
@@ -233,8 +250,10 @@ window.WQObjectives = (() => {
 
   let saveTimer = null;
   function handleInput() {
+    if (isLoading) return;
+    const periodAtInput = getCurrentObjectivePeriod();
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveObjectives().catch(console.warn), 350);
+    saveTimer = setTimeout(() => saveObjectives(collectData(), periodAtInput).catch(console.warn), 350);
   }
 
   function getObjectives() {

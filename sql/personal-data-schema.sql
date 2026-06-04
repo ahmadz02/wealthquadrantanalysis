@@ -22,6 +22,8 @@ create table if not exists public.personal_profiles (
 create table if not exists public.financial_objectives (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
+  year int not null default extract(year from now())::int,
+  month int not null default (extract(month from now())::int - 1) check (month between 0 and 11),
   category text not null check (category in ('short','medium','long')),
   objective text,
   amount_expected numeric(14,2) not null default 0,
@@ -30,6 +32,10 @@ create table if not exists public.financial_objectives (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+
+create index if not exists financial_objectives_user_period_idx
+  on public.financial_objectives(user_id, year, month, category, sort_order);
 
 alter table public.personal_profiles enable row level security;
 alter table public.financial_objectives enable row level security;
