@@ -17,9 +17,17 @@ window.WQPersonalData = (() => {
       .replaceAll("'", '&#039;');
   }
 
-  function getCurrentUserId() {
-    return activeUserId || window.WQStorage?.getActiveUserId?.() || window.WQAuth?.getUserId?.() || null;
-  }
+  async function getSupabaseUserId() {
+  const {
+    data: { user },
+    error
+  } = await WQSupabase.auth.getUser();
+
+  if (error) throw error;
+  if (!user) throw new Error('No Supabase Auth user found. Please login again.');
+
+  return user.id;
+}
 
   function localKey(userId = getCurrentUserId()) {
     return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
@@ -62,8 +70,12 @@ window.WQPersonalData = (() => {
                 <div class="tot-label">Profile Status</div>
                 <div class="tot-val neutral" id="pd-status">Incomplete</div>
               </div>
-              <button class="btn-nav btn-pri" type="button" onclick="WQPersonalData.saveProfile().then(()=>{this.textContent='Saved';setTimeout(()=>this.textContent='Save data',1200)})">Save data</button>
-            </div>
+              <button class="btn-nav btn-pri" type="button" onclick="WQPersonalData.saveProfile()
+              .then(()=>{this.textContent='Saved';setTimeout(()=>this.textContent='Save data',1200)})
+              .catch(err=>{this.textContent='Save failed';alert(err.message);setTimeout(()=>this.textContent='Save data',1200)})">
+              Save data </button>
+                        
+              </div>
           </div>
 
           <div class="card">
@@ -265,32 +277,49 @@ window.WQPersonalData = (() => {
   }
 
   async function saveProfile(data = collectData()) {
-    currentProfile = data;
-    const userId = getCurrentUserId();
-    try { localStorage.setItem(localKey(userId), JSON.stringify(data)); } catch (e) {}
+  currentProfile = data;
+  const userId = await getSupabaseUserId();
 
-    if (!window.WQSupabase || !userId) return data;
-
-    const payload = {
-      user_id: userId,
-      full_name: data.full_name,
-      ic_number: data.ic_number,
-      current_age: data.current_age ? Number(data.current_age) : null,
-      phone: data.phone,
-      email: data.email,
-      profession: data.profession,
-      home_address: data.home_address,
-      spouse_enabled: data.spouse_enabled,
-      spouse_data: data.spouse,
-      children_enabled: data.children_enabled,
-      children_data: data.children,
-      updated_at: new Date().toISOString()
-    };
-
-    const { error } = await WQSupabase.from('personal_profiles').upsert(payload, { onConflict: 'user_id' });
-    if (error) console.warn('Profile save fallback only:', error.message);
-    return data;
+  if (!window.WQSupabase) {
+    throw new Error('Supabase client not loaded.');
   }
+
+  if (!userId) {
+    throw new Error('No active user. Please login first.');
+  }
+
+  const payload = {
+    user_id: userId,
+    full_name: data.full_name,
+    ic_number: data.ic_number,
+    current_age: data.current_age ? Number(data.current_age) : null,
+    phone: data.phone,
+    email: data.email,
+    profession: data.profession,
+    home_address: data.home_address,
+    spouse_enabled: data.spouse_enabled,
+    spouse_data: data.spouse,
+    children_enabled: data.children_enabled,
+    children_data: data.children,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = await WQSupabase
+    .from('personal_profiles')
+    .upsert(payload, { onConflict: 'user_id' });
+
+  if (error) {
+    console.error('Supabase personal profile save failed:', error);
+    throw error;
+  }
+
+  // Optional cache only after Supabase success
+  try {
+    localStorage.setItem(localKey(userId), JSON.stringify(data));
+  } catch (e) {}
+
+  return data;
+}
 
   async function loadProfile(userId) {
     activeUserId = userId || getCurrentUserId();
