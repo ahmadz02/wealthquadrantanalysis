@@ -36,7 +36,10 @@ window.WQStorage = (() => {
       const { data, error } = await WQSupabase
         .from('wealth_month_data')
         .select('year, month, data')
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .eq('year', currentYear)
+        .eq('month', currentMonth)
+        .maybeSingle()
       if (error) throw error;
       (data || []).forEach(row => {
         cache[storageKey(row.year,row.month)] = row.data || {};

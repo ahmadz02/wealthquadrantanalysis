@@ -30,8 +30,15 @@ window.WQPersonalData = (() => {
 }
 
   function localKey(userId = getCurrentUserId()) {
-    return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
-  }
+  const period = window.getCurrentPeriod?.() || {};
+  const year = period.year;
+  const month = period.month;
+
+  return window.WQStorage?.getScopedLocalKey?.(
+    `${LS_KEY}-${year}-${month}`,
+    userId
+  ) || `${LS_KEY}:${userId || 'anonymous'}:${year}-${month}`;
+}
 
   function defaultProfile() {
     return {
@@ -288,8 +295,14 @@ window.WQPersonalData = (() => {
     throw new Error('No active user. Please login first.');
   }
 
+const period = window.getCurrentPeriod?.() || {};
+const year = period.year;
+const month = period.month;
+
   const payload = {
     user_id: userId,
+    year,
+    month,
     full_name: data.full_name,
     ic_number: data.ic_number,
     current_age: data.current_age ? Number(data.current_age) : null,
@@ -306,7 +319,7 @@ window.WQPersonalData = (() => {
 
   const { error } = await WQSupabase
     .from('personal_profiles')
-    .upsert(payload, { onConflict: 'user_id' });
+    .upsert(payload, { onConflict: 'user_id,year,month' })
 
   if (error) {
     console.error('Supabase personal profile save failed:', error);
