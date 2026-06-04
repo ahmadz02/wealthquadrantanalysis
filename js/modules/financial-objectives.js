@@ -21,9 +21,13 @@ window.WQObjectives = (() => {
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
   }
-  function getCurrentUserId() {
-    return activeUserId || window.WQStorage?.getActiveUserId?.() || window.WQAuth?.getUserId?.() || null;
-  }
+  function localKey(userId = getCurrentUserId()) {
+  const period = window.getCurrentPeriod?.() || {};
+  return window.WQStorage?.getScopedLocalKey?.(
+    `${LS_KEY}-${period.year}-${period.month}`,
+    userId
+  ) || `${LS_KEY}:${userId || 'anonymous'}:${period.year}-${period.month}`;
+}
 
   function localKey(userId = getCurrentUserId()) {
     return window.WQStorage?.getScopedLocalKey?.(LS_KEY, userId) || `${LS_KEY}:${userId || 'anonymous'}`;
@@ -157,8 +161,14 @@ window.WQObjectives = (() => {
     try { localStorage.setItem(localKey(userId), JSON.stringify(data)); } catch (e) {}
     if (!window.WQSupabase || !userId) return data;
 
+    const period = window.getCurrentPeriod?.() || {};
+    const year = period.year;
+    const month = period.month;
+
     const rows = Object.values(data).flat().map(r => ({
       user_id: userId,
+      year,
+      month,
       category: r.category,
       objective: r.objective,
       amount_expected: r.amount_expected || 0,
@@ -167,7 +177,10 @@ window.WQObjectives = (() => {
       updated_at: new Date().toISOString()
     }));
 
-    const del = await WQSupabase.from('financial_objectives').delete().eq('user_id', userId);
+    const del = await WQSupabase.from('financial_objectives').delete()
+        .eq('user_id', userId)
+        .eq('year', year)
+        .eq('month', month);
     if (del.error) {
       console.warn('Objective delete failed; using local fallback:', del.error.message);
       return data;
@@ -184,10 +197,16 @@ window.WQObjectives = (() => {
     let data = null;
 
     if (window.WQSupabase && activeUserId) {
+      const period = window.getCurrentPeriod?.() || {};
+      const year = period.year;
+      const month = period.month;
+
       const { data: rows, error } = await WQSupabase
         .from('financial_objectives')
         .select('*')
         .eq('user_id', activeUserId)
+        .eq('year', year)
+        .eq('month', month)
         .order('category')
         .order('sort_order');
       if (!error && rows) {
