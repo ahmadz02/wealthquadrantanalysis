@@ -83,7 +83,8 @@ function syncPeriodControls() {
 
 function defaultOnlineData() { return {
   salary:0, bonus:0, allow:[], passive:[], side:[], epf:0, eis:0, socso:0, zakat:0, othDed:[],
-  mtg:[], non:[], fix:[], vari:[], sav:[], tak:[], cash:[], inv:[], prop:[], ret:[], liab:[]
+  mtg:[], non:[], fix:[], vari:[], sav:[], tak:[], cash:[], inv:[], prop:[], ret:[], liab:[],
+  analysisNotes: { commentaries: {}, invRatioInput: '' }
 }; }
 
 function noteKey(key) {
@@ -258,24 +259,58 @@ function resetSeg(n) {
 }
 
 /* ── COMMENTARY ── */
+function collectAnalysisNotes() {
+  const commentaries = {};
+  document.querySelectorAll('textarea[id^="cb-"]').forEach(ta => {
+    const key = ta.id.replace('cb-', '');
+    commentaries[key] = ta.value || '';
+  });
+  return {
+    commentaries,
+    invRatioInput: R('inv-ratio-input')?.value || ''
+  };
+}
+
+function saveAnalysisNow() {
+  // Keep old browser-local backup, but also persist inside monthly data via Supabase.
+  try {
+    const notes = collectAnalysisNotes();
+    Object.entries(notes.commentaries || {}).forEach(([key, val]) => localStorage.setItem(noteKey(key), val));
+    if (notes.invRatioInput) localStorage.setItem(noteKey('inv-ratio-input'), notes.invRatioInput);
+  } catch(e){}
+  saveData();
+}
+
 function saveCommentary(key, el) {
   const val = el.value;
   const cnt = R('cc-'+key);
   if(cnt) cnt.textContent = val.length+' / '+el.maxLength;
   try { localStorage.setItem(noteKey(key), val); } catch(e){}
+  saveAnalysisNow();
 }
 function loadCommentaries() {
+  const monthData = window.WQStorage?.getMonthData ? WQStorage.getMonthData(currentYear, currentMonth, defaultOnlineData()) : defaultOnlineData();
+  const notes = monthData?.analysisNotes || {};
+  const commentaries = notes.commentaries || {};
+
   document.querySelectorAll('textarea[id^="cb-"]').forEach(ta => {
     const key = ta.id.replace('cb-','');
     try {
-      const saved = localStorage.getItem(noteKey(key));
-      if(saved) {
-        ta.value = saved;
-        const cnt = R('cc-'+key);
-        if(cnt) cnt.textContent = saved.length+' / '+ta.maxLength;
-      }
+      const saved = commentaries[key] ?? localStorage.getItem(noteKey(key)) ?? '';
+      ta.value = saved;
+      const cnt = R('cc-'+key);
+      if(cnt) cnt.textContent = saved.length+' / '+ta.maxLength;
     } catch(e){}
   });
+
+  const invInput = R('inv-ratio-input');
+  if (invInput) {
+    try {
+      const savedInv = notes.invRatioInput ?? localStorage.getItem(noteKey('inv-ratio-input')) ?? '';
+      invInput.value = savedInv;
+      updateInvRatio();
+    } catch(e){}
+  }
 }
 
 /* ── PRINT AS PDF ── */
@@ -370,6 +405,7 @@ function collectData() {
     mtg:getRowData('rows-mtg'), non:getRowData('rows-non'), fix:getRowData('rows-fix'), vari:getRowData('rows-var'), sav:getRowData('rows-sav'), tak:getRowData('rows-tak'),
     cash:getRowData('rows-cash'), inv:getRowData('rows-inv'), prop:getRowData('rows-prop'), ret:getRowData('rows-ret'),
     liab:getRowData('rows-liab'),
+    analysisNotes: collectAnalysisNotes(),
   };
 }
 let __wqSaveTimer = null;
@@ -728,12 +764,14 @@ function installDataEntryAutosaveListeners() {
   if (window.__wqDataEntryAutosaveInstalled) return;
   window.__wqDataEntryAutosaveInstalled = true;
   document.addEventListener('input', function(e){
-    if (!e.target.closest || !e.target.closest('#page-entry')) return;
-    if (e.target.matches('input, select, textarea')) saveData();
+    if (!e.target.closest) return;
+    if (e.target.closest('#page-entry') && e.target.matches('input, select, textarea')) saveData();
+    if (e.target.closest('#page-analysis') && e.target.matches('input, textarea')) saveAnalysisNow();
   });
   document.addEventListener('change', function(e){
-    if (!e.target.closest || !e.target.closest('#page-entry')) return;
-    if (e.target.matches('input, select, textarea')) { recalc(); saveData(); }
+    if (!e.target.closest) return;
+    if (e.target.closest('#page-entry') && e.target.matches('input, select, textarea')) { recalc(); saveData(); }
+    if (e.target.closest('#page-analysis') && e.target.matches('input, textarea')) saveAnalysisNow();
   });
   window.addEventListener('beforeunload', function(){
     try {
